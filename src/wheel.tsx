@@ -12,6 +12,8 @@ interface WheelSliceProps {
   tFill: number;
 }
 
+const BG_MAX_LIGHTNESS = 0.85;
+
 class WheelSlice extends React.Component<WheelSliceProps> {
   static defaultProps = {
     left: 0,
@@ -30,7 +32,7 @@ class WheelSlice extends React.Component<WheelSliceProps> {
     } = this.props;
 
     const textColor =
-      backgroundColor.luminance > 0.8 ? Color.BLACK : Color.WHITE;
+      backgroundColor.luminance > BG_MAX_LIGHTNESS ? Color.BLACK : Color.WHITE;
 
     const angle = lerp(2 * Math.PI * relativeWeight, 1.5 * Math.PI, tFill);
 
@@ -106,7 +108,9 @@ export class CanvasWheel extends React.Component<CanvasWheelProps> {
       );
 
       const textColor =
-        slice.backgroundColor.luminance > 0.8 ? Color.BLACK : Color.WHITE;
+        slice.backgroundColor.luminance > BG_MAX_LIGHTNESS
+          ? Color.BLACK
+          : Color.WHITE;
 
       context.fillStyle = textColor.toRGBA();
       context.save();
