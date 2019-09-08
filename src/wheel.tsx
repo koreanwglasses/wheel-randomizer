@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Color } from './color';
 import { sum, cumsum, lnnr, easeIn, lerp, clamp } from './utils';
+import { relative } from 'path';
 
 interface WheelSliceProps {
   label: string;
@@ -157,19 +158,28 @@ export class Wheel extends React.Component<WheelProps> {
           —
         </div>
 
-        {entries.map((entry, i) => (
-          <WheelSlice
-            label={entry.label}
-            relativeWeight={relativeWeights[i]}
-            backgroundColor={this.colors[i]}
-            angularOffset={angularOffsets[i] + animatedAngularOffset}
-            radius={200}
-            key={i}
-            left={10}
-            top={0}
-            tFill={i == pointedIndex ? tFocus : 0}
-          />
-        ))}
+        <div
+          style={{
+            width: 400,
+            height: 400,
+            position: 'relative',
+            left: 10,
+            transform: `rotate(${animatedAngularOffset}rad)`
+          }}
+        >
+          {entries.map((entry, i) => (
+            <WheelSlice
+              label={entry.label}
+              relativeWeight={relativeWeights[i]}
+              backgroundColor={this.colors[i]}
+              angularOffset={angularOffsets[i]}
+              radius={200}
+              key={i}
+              top={0}
+              tFill={i == pointedIndex ? tFocus : 0}
+            />
+          ))}
+        </div>
       </div>
     );
   }

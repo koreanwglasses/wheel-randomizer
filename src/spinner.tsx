@@ -34,19 +34,21 @@ export class Spinner extends React.Component<SpinnerProps, SpinnerState> {
     t: 0
   };
 
-  private tick = () => {
+  private startTime: number = null;
+
+  private tick = (time: number) => {
     if (this.props.mode === SpinnerMode.NONE) return;
 
-    this.setState(prevState => {
-      if (prevState.t + 1.0 / 60 < this.props.duration) {
-        requestAnimationFrame(this.tick);
-      } else {
-        this.props.onAnimationEnd(this.props.mode);
-      }
-      return {
-        t: prevState.t + 1.0 / 60
-      };
-    });
+    if (this.startTime === null) {
+      this.startTime = time;
+    }
+    const t = (time - this.startTime) / 1000;
+    this.setState({ t });
+    if (t < this.props.duration) {
+      requestAnimationFrame(this.tick);
+    } else {
+      this.props.onAnimationEnd(this.props.mode);
+    }
   };
 
   componentDidMount() {
@@ -55,6 +57,7 @@ export class Spinner extends React.Component<SpinnerProps, SpinnerState> {
 
   componentDidUpdate(prevProps: SpinnerProps) {
     if (prevProps.mode != this.props.mode) {
+      this.startTime = null;
       this.setState({ t: 0 });
       requestAnimationFrame(this.tick);
     }
