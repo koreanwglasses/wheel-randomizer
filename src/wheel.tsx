@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Color } from './color';
 import { sum, cumsum, lnnr, easeIn, lerp, clamp } from './utils';
+import { number } from 'prop-types';
 
 interface WheelSliceProps {
   label: string;
@@ -8,8 +9,6 @@ interface WheelSliceProps {
   backgroundColor: Color;
   angularOffset: number;
   radius: number;
-  left: number;
-  top: number;
   tFill: number;
 }
 
@@ -27,8 +26,6 @@ class WheelSlice extends React.Component<WheelSliceProps> {
       backgroundColor,
       angularOffset,
       radius,
-      left,
-      top,
       tFill
     } = this.props;
 
@@ -43,8 +40,8 @@ class WheelSlice extends React.Component<WheelSliceProps> {
           width: 2 * radius + 'px',
           height: 2 * radius + 'px',
           position: 'absolute',
-          left,
-          top,
+          left: 0,
+          top: 0,
           lineHeight: 2 * radius + 'px',
           fontSize: 15 * (1 + tFill),
           color: textColor.toRGBA(),
@@ -53,13 +50,78 @@ class WheelSlice extends React.Component<WheelSliceProps> {
             50 *
               tFill}% 50%, ${backgroundColor.toRGBA()} ${angle}rad, transparent ${angle}rad)`,
           transform: `rotate(${angularOffset}rad)`,
-          borderRadius: 50 * (1 - tFill) + '%',
+          borderRadius: 50 * (1 - tFill * 0.75) + '%',
           zIndex: tFill > 0 ? 1 : 'auto'
         }}
       >
         <span style={{ paddingLeft: 10 * (1 + tFill) }}>{label}</span>
       </div>
     );
+  }
+}
+
+interface CanvasWheelSlice {
+  label: string;
+  relativeWeight: number;
+  backgroundColor: Color;
+  angularOffset: number;
+}
+
+interface CanvasWheelProps {
+  slices: CanvasWheelSlice[];
+  radius: number;
+}
+
+const drawSector = (
+  context: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  startAngle: number,
+  endAngle: number
+) => {
+  context.beginPath();
+  context.moveTo(cx, cy);
+  context.arc(cx, cy, radius, startAngle, endAngle);
+  context.lineTo(cx, cy);
+  context.fill();
+};
+
+export class CanvasWheel extends React.Component<CanvasWheelProps> {
+  private canvas = React.createRef<HTMLCanvasElement>();
+
+  componentDidMount() {
+    const { slices, radius } = this.props;
+    const context = this.canvas.current.getContext('2d');
+    context.font = '15px Segoe UI';
+    for (const slice of slices) {
+      context.fillStyle = slice.backgroundColor.toRGBA();
+      drawSector(
+        context,
+        radius,
+        radius,
+        radius,
+        Math.PI + slice.angularOffset - slice.relativeWeight * Math.PI,
+        Math.PI + slice.angularOffset + slice.relativeWeight * Math.PI
+      );
+
+      const textColor =
+        slice.backgroundColor.luminance > 0.8 ? Color.BLACK : Color.WHITE;
+
+      context.fillStyle = textColor.toRGBA();
+      context.save();
+      context.translate(radius, radius);
+      context.rotate(slice.angularOffset);
+      context.translate(-radius, -radius);
+
+      context.fillText(slice.label, 10, radius + 5);
+      context.restore();
+    }
+  }
+
+  render() {
+    const { radius } = this.props;
+    return <canvas ref={this.canvas} width={2 * radius} height={2 * radius} />;
   }
 }
 
@@ -156,18 +218,25 @@ export class Wheel extends React.Component<WheelProps> {
             transform: `rotate(${animatedAngularOffset}rad)`
           }}
         >
-          {entries.map((entry, i) => (
+          {tFocus > 0 && (
             <WheelSlice
-              label={entry.label}
-              relativeWeight={relativeWeights[i]}
-              backgroundColor={this.colors[i]}
-              angularOffset={angularOffsets[i]}
+              label={entries[pointedIndex].label}
+              relativeWeight={relativeWeights[pointedIndex]}
+              backgroundColor={this.colors[pointedIndex]}
+              angularOffset={angularOffsets[pointedIndex]}
               radius={200}
-              key={i}
-              top={0}
-              tFill={i == pointedIndex ? tFocus : 0}
+              tFill={tFocus}
             />
-          ))}
+          )}
+          <CanvasWheel
+            radius={200}
+            slices={entries.map((entry, i) => ({
+              label: entry.label,
+              relativeWeight: relativeWeights[i],
+              backgroundColor: this.colors[i],
+              angularOffset: angularOffsets[i]
+            }))}
+          />
         </div>
       </div>
     );
