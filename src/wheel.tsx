@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { Color } from './color';
 import { sum, cumsum, lnnr, easeIn, lerp, clamp } from './utils';
-import * as html2canvas from 'html2canvas';
 
 interface WheelSliceProps {
   label: string;
