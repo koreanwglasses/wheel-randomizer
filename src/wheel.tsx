@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Color } from './color';
 import { sum, cumsum, lnnr, easeIn, lerp, clamp } from './utils';
-import { relative } from 'path';
+import * as html2canvas from 'html2canvas';
 
 interface WheelSliceProps {
   label: string;
@@ -38,19 +38,6 @@ class WheelSlice extends React.Component<WheelSliceProps> {
 
     const angle = lerp(2 * Math.PI * relativeWeight, 1.5 * Math.PI, tFill);
 
-    const p = [];
-    p[0] = { x: 0.5 + 0.5 * tFill, y: 0.5 };
-    p[1] = {
-      x: clamp(0.5 - 0.5 / Math.tan(angle / 2), 0, 1),
-      y: clamp(0.5 - 0.5 * Math.abs(Math.tan(angle / 2)), 0, 0.5)
-    };
-    p[2] = { x: 0, y: 0 };
-    p[3] = { x: 0, y: 1 };
-    p[4] = {
-      x: clamp(0.5 - 0.5 / Math.tan(angle / 2), 0, 1),
-      y: clamp(0.5 + 0.5 * Math.abs(Math.tan(angle / 2)), 0.5, 1)
-    };
-
     return (
       <div
         style={{
@@ -62,10 +49,10 @@ class WheelSlice extends React.Component<WheelSliceProps> {
           lineHeight: 2 * radius + 'px',
           fontSize: 15 * (1 + tFill),
           color: textColor.toRGBA(),
-          backgroundColor: backgroundColor.toRGBA(),
-          clipPath: `polygon(${p
-            .map(({ x, y }) => `${100 * x}% ${100 * y}%`)
-            .join(', ')})`,
+          background: `conic-gradient(from ${-0.5 * Math.PI -
+            angle / 2}rad at ${50 +
+            50 *
+              tFill}% 50%, ${backgroundColor.toRGBA()} ${angle}rad, transparent ${angle}rad)`,
           transform: `rotate(${angularOffset}rad)`,
           borderRadius: 50 * (1 - tFill) + '%',
           zIndex: tFill > 0 ? 1 : 'auto'
@@ -95,6 +82,7 @@ interface WheelProps {
 
 export class Wheel extends React.Component<WheelProps> {
   private colors: Color[] = [];
+  private wheel = React.createRef<HTMLDivElement>();
 
   static defaultProps = {
     colorscheme: WheelColorSchemes.DEFAULT,
@@ -143,6 +131,7 @@ export class Wheel extends React.Component<WheelProps> {
           width: 410,
           height: 400,
           position: 'relative',
+          overflow: 'hidden',
           left: 'calc(50% - 210px)'
         }}
       >
@@ -159,6 +148,7 @@ export class Wheel extends React.Component<WheelProps> {
         </div>
 
         <div
+          ref={this.wheel}
           style={{
             width: 400,
             height: 400,
