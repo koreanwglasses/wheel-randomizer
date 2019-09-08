@@ -72,28 +72,17 @@ export class Spinner extends React.Component<SpinnerProps, SpinnerState> {
       tFocus = clamp(t / duration, 0, 1);
     }
     if (mode === SpinnerMode.UNFOCUS) {
-      tFocus = clamp(1 - t / duration, 0, 1);
+      tFocus = easeIn(t / duration, { start: 1, end: 0 });
     }
 
     return (
-      <>
-        <div
-          style={{
-            position: 'absolute',
-            left: 80,
-            top: 282,
-            fontSize: 20,
-            opacity: 1 - tFocus
-          }}
-        >
-          —
-        </div>
+      <div style={{ width: '100vw' }}>
         <Wheel
           entries={entries}
           angularOffset={angularOffset}
           tFocus={tFocus}
         />
-      </>
+      </div>
     );
   }
 }
@@ -101,7 +90,7 @@ export class Spinner extends React.Component<SpinnerProps, SpinnerState> {
 const ANIM_DURATION: { [mode: number]: number } = {
   [SpinnerMode.SPIN]: 5,
   [SpinnerMode.FOCUS]: 1,
-  [SpinnerMode.UNFOCUS]: 0.3
+  [SpinnerMode.UNFOCUS]: 0.5
 };
 
 interface SpinnerWithButtonState {
@@ -166,7 +155,7 @@ export class SpinnerWithButton extends React.Component<
 
   render() {
     return (
-      <>
+      <div className="spinner-with-button">
         <Spinner
           entries={this.props.entries}
           mode={this.state.mode}
@@ -175,14 +164,16 @@ export class SpinnerWithButton extends React.Component<
           end={this.state.end}
           onAnimationEnd={this.onAnimationEnd}
         />
-        <input
-          type="button"
-          onClick={this.onSpinClick}
-          disabled={this.state.spinning}
-          value="SPIN"
-          style={{ width: 100, position: 'absolute', left: 250, top: 550 }}
-        />
-      </>
+        <div style={{ width: '100%', textAlign: 'center', marginTop: '50px' }}>
+          <input
+            type="button"
+            onClick={this.onSpinClick}
+            disabled={this.state.spinning}
+            value="SPIN"
+            style={{ width: 100 }}
+          />
+        </div>
+      </div>
     );
   }
 }

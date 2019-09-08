@@ -1,5 +1,4 @@
 import * as React from 'react';
-import * as ReactDOM from 'react-dom';
 import { Color } from './color';
 import { sum, cumsum, lnnr, easeIn, lerp, clamp } from './utils';
 
@@ -138,7 +137,26 @@ export class Wheel extends React.Component<WheelProps> {
     }
 
     return (
-      <div>
+      <div
+        style={{
+          width: 410,
+          height: 400,
+          position: 'relative',
+          left: 'calc(50% - 210px)'
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 182,
+            fontSize: 20,
+            opacity: 1 - tFocus
+          }}
+        >
+          —
+        </div>
+
         {entries.map((entry, i) => (
           <WheelSlice
             label={entry.label}
@@ -147,8 +165,8 @@ export class Wheel extends React.Component<WheelProps> {
             angularOffset={angularOffsets[i] + animatedAngularOffset}
             radius={200}
             key={i}
-            left={100}
-            top={100}
+            left={10}
+            top={0}
             tFill={i == pointedIndex ? tFocus : 0}
           />
         ))}
