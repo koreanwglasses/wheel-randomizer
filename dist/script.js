@@ -193,13 +193,7 @@ const entries = [
     { label: '2', weight: 1 },
     { label: '3', weight: 1 }
 ];
-ReactDOM.render(
-//   <Spinner
-//     entries={entries}
-//     duration={5}
-//     target={2 * Math.PI * (3 * Math.random() + 7)}
-//   />,
-React.createElement(spinner_1.SpinnerWithButton, { entries: entries, duration: 5 }), document.getElementById('root'));
+ReactDOM.render(React.createElement(spinner_1.SpinnerWithButton, { entries: entries }), document.getElementById('root'));
 
 
 /***/ }),
@@ -217,7 +211,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(/*! react */ "react");
 const wheel_1 = __webpack_require__(/*! ./wheel */ "./src/wheel.tsx");
 const utils_1 = __webpack_require__(/*! ./utils */ "./src/utils.tsx");
-const FOCUS_DURATION = 1;
+var SpinnerMode;
+(function (SpinnerMode) {
+    SpinnerMode[SpinnerMode["NONE"] = 0] = "NONE";
+    SpinnerMode[SpinnerMode["SPIN"] = 1] = "SPIN";
+    SpinnerMode[SpinnerMode["FOCUS"] = 2] = "FOCUS";
+    SpinnerMode[SpinnerMode["UNFOCUS"] = 3] = "UNFOCUS";
+})(SpinnerMode = exports.SpinnerMode || (exports.SpinnerMode = {}));
 class Spinner extends React.Component {
     constructor() {
         super(...arguments);
@@ -225,9 +225,14 @@ class Spinner extends React.Component {
             t: 0
         };
         this.tick = () => {
+            if (this.props.mode === SpinnerMode.NONE)
+                return;
             this.setState(prevState => {
-                if (prevState.t + 1.0 / 60 < this.props.duration + FOCUS_DURATION) {
+                if (prevState.t + 1.0 / 60 < this.props.duration) {
                     requestAnimationFrame(this.tick);
+                }
+                else {
+                    this.props.onAnimationEnd(this.props.mode);
                 }
                 return {
                     t: prevState.t + 1.0 / 60
@@ -238,16 +243,28 @@ class Spinner extends React.Component {
     componentDidMount() {
         requestAnimationFrame(this.tick);
     }
+    componentDidUpdate(prevProps) {
+        if (prevProps.mode != this.props.mode) {
+            this.setState({ t: 0 });
+            requestAnimationFrame(this.tick);
+        }
+    }
     render() {
-        const { entries, duration, target } = this.props;
+        const { mode, entries, duration, start, end } = this.props;
         const { t } = this.state;
-        const angularOffset = utils_1.easeIn({ duration, end: target }, t);
-        const tFocus = utils_1.clamp((t - duration) / FOCUS_DURATION, 0, 1);
+        const angularOffset = mode === SpinnerMode.SPIN ? utils_1.easeOut(t, { duration, start, end }) : end;
+        let tFocus = 0;
+        if (mode === SpinnerMode.FOCUS) {
+            tFocus = utils_1.clamp(t / duration, 0, 1);
+        }
+        if (mode === SpinnerMode.UNFOCUS) {
+            tFocus = utils_1.clamp(1 - t / duration, 0, 1);
+        }
         return (React.createElement(React.Fragment, null,
             React.createElement("div", { style: {
                     position: 'absolute',
                     left: 80,
-                    top: 285,
+                    top: 282,
                     fontSize: 20,
                     opacity: 1 - tFocus
                 } }, "\u2014"),
@@ -256,27 +273,65 @@ class Spinner extends React.Component {
 }
 exports.Spinner = Spinner;
 Spinner.defaultProps = {
-    onFinish() { }
+    mode: SpinnerMode.NONE,
+    end: 0,
+    start: 0,
+    onAnimationEnd: () => { }
+};
+const ANIM_DURATION = {
+    [SpinnerMode.SPIN]: 5,
+    [SpinnerMode.FOCUS]: 1,
+    [SpinnerMode.UNFOCUS]: 0.3
 };
 class SpinnerWithButton extends React.Component {
     constructor() {
         super(...arguments);
         this.state = {
             spinning: false,
-            target: 0
+            displaying: false,
+            mode: SpinnerMode.NONE,
+            start: 0,
+            end: 0
         };
         this.spin = () => {
-            this.setState({
-                spinning: true,
-                target: 2 * Math.PI * (3 * Math.random() + 7)
+            this.setState(prevState => {
+                return {
+                    mode: SpinnerMode.SPIN,
+                    start: prevState.end % (2 * Math.PI),
+                    end: 2 * Math.PI * (3 * Math.random() + 7)
+                };
             });
+        };
+        this.onAnimationEnd = (mode) => {
+            if (mode === SpinnerMode.UNFOCUS && this.state.spinning) {
+                this.spin();
+            }
+            if (mode === SpinnerMode.SPIN && !this.state.displaying) {
+                this.setState({
+                    spinning: false,
+                    displaying: true,
+                    mode: SpinnerMode.FOCUS
+                });
+            }
+        };
+        this.onSpinClick = () => {
+            if (this.state.displaying) {
+                this.setState({
+                    spinning: true,
+                    displaying: false,
+                    mode: SpinnerMode.UNFOCUS
+                });
+            }
+            else {
+                this.setState({ spinning: true, displaying: false });
+                this.spin();
+            }
         };
     }
     render() {
         return (React.createElement(React.Fragment, null,
-            this.state.spinning && (React.createElement(Spinner, { entries: this.props.entries, duration: this.props.duration, target: this.state.target })),
-            !this.state.spinning && React.createElement(wheel_1.Wheel, { entries: this.props.entries }),
-            React.createElement("input", { type: "button", onClick: this.spin, disabled: this.state.spinning, value: "SPIN", style: { width: 100, position: 'absolute', left: 250, top: 550 } })));
+            React.createElement(Spinner, { entries: this.props.entries, mode: this.state.mode, duration: ANIM_DURATION[this.state.mode], start: this.state.start, end: this.state.end, onAnimationEnd: this.onAnimationEnd }),
+            React.createElement("input", { type: "button", onClick: this.onSpinClick, disabled: this.state.spinning, value: "SPIN", style: { width: 100, position: 'absolute', left: 250, top: 550 } })));
     }
 }
 exports.SpinnerWithButton = SpinnerWithButton;
@@ -303,7 +358,7 @@ exports.cumsum = (arr) => {
     return result.slice(1);
 };
 exports.clamp = (x, min, max) => Math.max(min, Math.min(max, x));
-exports.easeIn = (params, t) => {
+exports.easeOut = (t, params = {}) => {
     const { duration = 1, start = 0, end = 1, degree = 5 } = params;
     const t_ = exports.clamp(t, 0, duration);
     return (end - start) * (1 - Math.pow(1 - t_ / duration, degree)) + start;
@@ -392,12 +447,12 @@ class Wheel extends React.Component {
         const pointedIndex = utils_1.cumsum(relativeWeights)
             .map(x => x >= utils_1.lnnr(-angularOffset / (2 * Math.PI) + relativeWeights[0] / 2, 1))
             .indexOf(true);
-        const animatedAngularOffset = utils_1.easeIn({
+        const animatedAngularOffset = utils_1.easeOut(tFocus, {
             duration: 1,
             start: utils_1.lnnr(angularOffset - Math.PI * relativeWeights[0], 2 * Math.PI) +
                 Math.PI * relativeWeights[0],
             end: 2 * Math.PI - angularOffsets[pointedIndex]
-        }, tFocus);
+        });
         while (this.colors.length < entries.length) {
             const i = this.colors.length;
             this.colors[i] = Array.isArray(colorscheme)

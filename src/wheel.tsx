@@ -1,7 +1,7 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import { Color } from './color';
-import { sum, cumsum, lnnr, easeIn, lerp, clamp } from './utils';
+import { sum, cumsum, lnnr, easeOut, lerp, clamp } from './utils';
 
 interface WheelSliceProps {
   label: string;
@@ -122,16 +122,13 @@ export class Wheel extends React.Component<WheelProps> {
       )
       .indexOf(true);
 
-    const animatedAngularOffset = easeIn(
-      {
-        duration: 1,
-        start:
-          lnnr(angularOffset - Math.PI * relativeWeights[0], 2 * Math.PI) +
-          Math.PI * relativeWeights[0],
-        end: 2 * Math.PI - angularOffsets[pointedIndex]
-      },
-      tFocus
-    );
+    const animatedAngularOffset = easeOut(tFocus, {
+      duration: 1,
+      start:
+        lnnr(angularOffset - Math.PI * relativeWeights[0], 2 * Math.PI) +
+        Math.PI * relativeWeights[0],
+      end: 2 * Math.PI - angularOffsets[pointedIndex]
+    });
 
     while (this.colors.length < entries.length) {
       const i = this.colors.length;

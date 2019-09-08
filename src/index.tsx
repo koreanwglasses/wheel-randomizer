@@ -10,11 +10,6 @@ const entries = [
 ];
 
 ReactDOM.render(
-  //   <Spinner
-  //     entries={entries}
-  //     duration={5}
-  //     target={2 * Math.PI * (3 * Math.random() + 7)}
-  //   />,
-  <SpinnerWithButton entries={entries} duration={5} />,
+  <SpinnerWithButton entries={entries} />,
   document.getElementById('root')
 );

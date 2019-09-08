@@ -1,23 +1,33 @@
 import * as React from 'react';
 import { WheelEntry, Wheel } from './wheel';
-import { easeIn, clamp } from './utils';
+import { easeOut, clamp } from './utils';
+
+export enum SpinnerMode {
+  NONE,
+  SPIN,
+  FOCUS,
+  UNFOCUS
+}
 
 interface SpinnerProps {
   entries: WheelEntry[];
+  mode: SpinnerMode;
   duration: number;
-  target: number;
-  onFinish: () => void;
+  end: number;
+  start: number;
+  onAnimationEnd: (mode: SpinnerMode) => void;
 }
 
 interface SpinnerState {
   t: number;
 }
 
-const FOCUS_DURATION = 1;
-
 export class Spinner extends React.Component<SpinnerProps, SpinnerState> {
   static defaultProps = {
-    onFinish() {}
+    mode: SpinnerMode.NONE,
+    end: 0,
+    start: 0,
+    onAnimationEnd: () => {}
   };
 
   state = {
@@ -25,9 +35,13 @@ export class Spinner extends React.Component<SpinnerProps, SpinnerState> {
   };
 
   private tick = () => {
+    if (this.props.mode === SpinnerMode.NONE) return;
+
     this.setState(prevState => {
-      if (prevState.t + 1.0 / 60 < this.props.duration + FOCUS_DURATION) {
+      if (prevState.t + 1.0 / 60 < this.props.duration) {
         requestAnimationFrame(this.tick);
+      } else {
+        this.props.onAnimationEnd(this.props.mode);
       }
       return {
         t: prevState.t + 1.0 / 60
@@ -39,12 +53,27 @@ export class Spinner extends React.Component<SpinnerProps, SpinnerState> {
     requestAnimationFrame(this.tick);
   }
 
+  componentDidUpdate(prevProps: SpinnerProps) {
+    if (prevProps.mode != this.props.mode) {
+      this.setState({ t: 0 });
+      requestAnimationFrame(this.tick);
+    }
+  }
+
   render() {
-    const { entries, duration, target } = this.props;
+    const { mode, entries, duration, start, end } = this.props;
     const { t } = this.state;
 
-    const angularOffset = easeIn({ duration, end: target }, t);
-    const tFocus = clamp((t - duration) / FOCUS_DURATION, 0, 1);
+    const angularOffset =
+      mode === SpinnerMode.SPIN ? easeOut(t, { duration, start, end }) : end;
+
+    let tFocus = 0;
+    if (mode === SpinnerMode.FOCUS) {
+      tFocus = clamp(t / duration, 0, 1);
+    }
+    if (mode === SpinnerMode.UNFOCUS) {
+      tFocus = clamp(1 - t / duration, 0, 1);
+    }
 
     return (
       <>
@@ -52,7 +81,7 @@ export class Spinner extends React.Component<SpinnerProps, SpinnerState> {
           style={{
             position: 'absolute',
             left: 80,
-            top: 285,
+            top: 282,
             fontSize: 20,
             opacity: 1 - tFocus
           }}
@@ -69,14 +98,22 @@ export class Spinner extends React.Component<SpinnerProps, SpinnerState> {
   }
 }
 
+const ANIM_DURATION: { [mode: number]: number } = {
+  [SpinnerMode.SPIN]: 5,
+  [SpinnerMode.FOCUS]: 1,
+  [SpinnerMode.UNFOCUS]: 0.3
+};
+
 interface SpinnerWithButtonState {
   spinning: boolean;
-  target: number;
+  displaying: boolean;
+  mode: SpinnerMode;
+  start: number;
+  end: number;
 }
 
 interface SpinnerWithButtonProps {
   entries: WheelEntry[];
-  duration: number;
 }
 
 export class SpinnerWithButton extends React.Component<
@@ -85,30 +122,62 @@ export class SpinnerWithButton extends React.Component<
 > {
   state = {
     spinning: false,
-    target: 0
+    displaying: false,
+    mode: SpinnerMode.NONE,
+    start: 0,
+    end: 0
   };
 
   private spin = () => {
-    this.setState({
-      spinning: true,
-      target: 2 * Math.PI * (3 * Math.random() + 7)
+    this.setState(prevState => {
+      return {
+        mode: SpinnerMode.SPIN,
+        start: prevState.end % (2 * Math.PI),
+        end: 2 * Math.PI * (3 * Math.random() + 7)
+      };
     });
+  };
+
+  private onAnimationEnd = (mode: SpinnerMode) => {
+    if (mode === SpinnerMode.UNFOCUS && this.state.spinning) {
+      this.spin();
+    }
+    if (mode === SpinnerMode.SPIN && !this.state.displaying) {
+      this.setState({
+        spinning: false,
+        displaying: true,
+        mode: SpinnerMode.FOCUS
+      });
+    }
+  };
+
+  private onSpinClick = () => {
+    if (this.state.displaying) {
+      this.setState({
+        spinning: true,
+        displaying: false,
+        mode: SpinnerMode.UNFOCUS
+      });
+    } else {
+      this.setState({ spinning: true, displaying: false });
+      this.spin();
+    }
   };
 
   render() {
     return (
       <>
-        {this.state.spinning && (
-          <Spinner
-            entries={this.props.entries}
-            duration={this.props.duration}
-            target={this.state.target}
-          />
-        )}
-        {!this.state.spinning && <Wheel entries={this.props.entries} />}
+        <Spinner
+          entries={this.props.entries}
+          mode={this.state.mode}
+          duration={ANIM_DURATION[this.state.mode]}
+          start={this.state.start}
+          end={this.state.end}
+          onAnimationEnd={this.onAnimationEnd}
+        />
         <input
           type="button"
-          onClick={this.spin}
+          onClick={this.onSpinClick}
           disabled={this.state.spinning}
           value="SPIN"
           style={{ width: 100, position: 'absolute', left: 250, top: 550 }}
