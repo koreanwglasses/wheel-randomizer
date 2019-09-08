@@ -200,7 +200,7 @@ export class Wheel extends React.Component<WheelProps> {
           style={{
             position: 'absolute',
             left: 0,
-            top: 182,
+            top: 183,
             fontSize: 20,
             opacity: 1 - tFocus
           }}
