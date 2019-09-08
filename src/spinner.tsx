@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { WheelEntry, Wheel } from './wheel';
-import { easeOut, clamp } from './utils';
+import { easeIn, clamp } from './utils';
 
 export enum SpinnerMode {
   NONE,
@@ -65,7 +65,7 @@ export class Spinner extends React.Component<SpinnerProps, SpinnerState> {
     const { t } = this.state;
 
     const angularOffset =
-      mode === SpinnerMode.SPIN ? easeOut(t, { duration, start, end }) : end;
+      mode === SpinnerMode.SPIN ? easeIn(t, { duration, start, end }) : end;
 
     let tFocus = 0;
     if (mode === SpinnerMode.FOCUS) {

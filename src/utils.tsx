@@ -9,7 +9,7 @@ export const cumsum = (arr: number[]) => {
 
 export const clamp = (x: number, min: number, max: number) =>
   Math.max(min, Math.min(max, x));
-export const easeOut = (
+export const easeIn = (
   t: number,
   params: {
     duration?: number;
