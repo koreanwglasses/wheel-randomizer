@@ -189,9 +189,12 @@ const React = __webpack_require__(/*! react */ "react");
 const ReactDOM = __webpack_require__(/*! react-dom */ "react-dom");
 const spinner_1 = __webpack_require__(/*! ./spinner */ "./src/spinner.tsx");
 const entries = [
-    { label: '1', weight: 2 },
-    { label: '2', weight: 1 },
-    { label: '3', weight: 1 }
+    { label: 'Halal Shack', weight: 2 },
+    { label: 'TMC', weight: 1 },
+    { label: 'Panera', weight: 1 },
+    { label: 'Sage', weight: 2 },
+    { label: 'Commons', weight: 4 },
+    { label: 'Moes', weight: 1 }
 ];
 ReactDOM.render(React.createElement(spinner_1.SpinnerWithButton, { entries: entries }), document.getElementById('root'));
 
@@ -224,20 +227,21 @@ class Spinner extends React.Component {
         this.state = {
             t: 0
         };
-        this.tick = () => {
+        this.startTime = null;
+        this.tick = (time) => {
             if (this.props.mode === SpinnerMode.NONE)
                 return;
-            this.setState(prevState => {
-                if (prevState.t + 1.0 / 60 < this.props.duration) {
-                    requestAnimationFrame(this.tick);
-                }
-                else {
-                    this.props.onAnimationEnd(this.props.mode);
-                }
-                return {
-                    t: prevState.t + 1.0 / 60
-                };
-            });
+            if (this.startTime === null) {
+                this.startTime = time;
+            }
+            const t = (time - this.startTime) / 1000;
+            this.setState({ t });
+            if (t < this.props.duration) {
+                requestAnimationFrame(this.tick);
+            }
+            else {
+                this.props.onAnimationEnd(this.props.mode);
+            }
         };
     }
     componentDidMount() {
@@ -245,6 +249,7 @@ class Spinner extends React.Component {
     }
     componentDidUpdate(prevProps) {
         if (prevProps.mode != this.props.mode) {
+            this.startTime = null;
             this.setState({ t: 0 });
             requestAnimationFrame(this.tick);
         }
@@ -252,22 +257,15 @@ class Spinner extends React.Component {
     render() {
         const { mode, entries, duration, start, end } = this.props;
         const { t } = this.state;
-        const angularOffset = mode === SpinnerMode.SPIN ? utils_1.easeOut(t, { duration, start, end }) : end;
+        const angularOffset = mode === SpinnerMode.SPIN ? utils_1.easeIn(t, { duration, start, end }) : end;
         let tFocus = 0;
         if (mode === SpinnerMode.FOCUS) {
             tFocus = utils_1.clamp(t / duration, 0, 1);
         }
         if (mode === SpinnerMode.UNFOCUS) {
-            tFocus = utils_1.clamp(1 - t / duration, 0, 1);
+            tFocus = utils_1.easeIn(t / duration, { start: 1, end: 0 });
         }
-        return (React.createElement(React.Fragment, null,
-            React.createElement("div", { style: {
-                    position: 'absolute',
-                    left: 80,
-                    top: 282,
-                    fontSize: 20,
-                    opacity: 1 - tFocus
-                } }, "\u2014"),
+        return (React.createElement("div", { style: { width: '100vw' } },
             React.createElement(wheel_1.Wheel, { entries: entries, angularOffset: angularOffset, tFocus: tFocus })));
     }
 }
@@ -281,7 +279,7 @@ Spinner.defaultProps = {
 const ANIM_DURATION = {
     [SpinnerMode.SPIN]: 5,
     [SpinnerMode.FOCUS]: 1,
-    [SpinnerMode.UNFOCUS]: 0.3
+    [SpinnerMode.UNFOCUS]: 0.5
 };
 class SpinnerWithButton extends React.Component {
     constructor() {
@@ -329,9 +327,10 @@ class SpinnerWithButton extends React.Component {
         };
     }
     render() {
-        return (React.createElement(React.Fragment, null,
+        return (React.createElement("div", { className: "spinner-with-button" },
             React.createElement(Spinner, { entries: this.props.entries, mode: this.state.mode, duration: ANIM_DURATION[this.state.mode], start: this.state.start, end: this.state.end, onAnimationEnd: this.onAnimationEnd }),
-            React.createElement("input", { type: "button", onClick: this.onSpinClick, disabled: this.state.spinning, value: "SPIN", style: { width: 100, position: 'absolute', left: 250, top: 550 } })));
+            React.createElement("div", { style: { width: '100%', textAlign: 'center', marginTop: '50px' } },
+                React.createElement("input", { type: "button", onClick: this.onSpinClick, disabled: this.state.spinning, value: "SPIN", style: { width: 100 } }))));
     }
 }
 exports.SpinnerWithButton = SpinnerWithButton;
@@ -358,7 +357,7 @@ exports.cumsum = (arr) => {
     return result.slice(1);
 };
 exports.clamp = (x, min, max) => Math.max(min, Math.min(max, x));
-exports.easeOut = (t, params = {}) => {
+exports.easeIn = (t, params = {}) => {
     const { duration = 1, start = 0, end = 1, degree = 5 } = params;
     const t_ = exports.clamp(t, 0, duration);
     return (end - start) * (1 - Math.pow(1 - t_ / duration, degree)) + start;
@@ -385,38 +384,27 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(/*! react */ "react");
 const color_1 = __webpack_require__(/*! ./color */ "./src/color.tsx");
 const utils_1 = __webpack_require__(/*! ./utils */ "./src/utils.tsx");
+const BG_MAX_LIGHTNESS = 0.85;
 class WheelSlice extends React.Component {
     render() {
-        const { label, relativeWeight, backgroundColor, angularOffset, radius, left, top, tFill } = this.props;
-        const textColor = backgroundColor.luminance > 0.8 ? color_1.Color.BLACK : color_1.Color.WHITE;
+        const { label, relativeWeight, backgroundColor, angularOffset, radius, tFill } = this.props;
+        const textColor = backgroundColor.luminance > BG_MAX_LIGHTNESS ? color_1.Color.BLACK : color_1.Color.WHITE;
         const angle = utils_1.lerp(2 * Math.PI * relativeWeight, 1.5 * Math.PI, tFill);
-        const p = [];
-        p[0] = { x: 0.5 + 0.5 * tFill, y: 0.5 };
-        p[1] = {
-            x: utils_1.clamp(0.5 - 0.5 / Math.tan(angle / 2), 0, 1),
-            y: utils_1.clamp(0.5 - 0.5 * Math.abs(Math.tan(angle / 2)), 0, 0.5)
-        };
-        p[2] = { x: 0, y: 0 };
-        p[3] = { x: 0, y: 1 };
-        p[4] = {
-            x: utils_1.clamp(0.5 - 0.5 / Math.tan(angle / 2), 0, 1),
-            y: utils_1.clamp(0.5 + 0.5 * Math.abs(Math.tan(angle / 2)), 0.5, 1)
-        };
         return (React.createElement("div", { style: {
                 width: 2 * radius + 'px',
                 height: 2 * radius + 'px',
                 position: 'absolute',
-                left,
-                top,
+                left: 0,
+                top: 0,
                 lineHeight: 2 * radius + 'px',
                 fontSize: 15 * (1 + tFill),
                 color: textColor.toRGBA(),
-                backgroundColor: backgroundColor.toRGBA(),
-                clipPath: `polygon(${p
-                    .map(({ x, y }) => `${100 * x}% ${100 * y}%`)
-                    .join(', ')})`,
+                background: `conic-gradient(from ${-0.5 * Math.PI -
+                    angle / 2}rad at ${50 +
+                    50 *
+                        tFill}% 50%, ${backgroundColor.toRGBA()} ${angle}rad, transparent ${angle}rad)`,
                 transform: `rotate(${angularOffset}rad)`,
-                borderRadius: 50 * (1 - tFill) + '%',
+                borderRadius: 50 * (1 - tFill * 0.75) + '%',
                 zIndex: tFill > 0 ? 1 : 'auto'
             } },
             React.createElement("span", { style: { paddingLeft: 10 * (1 + tFill) } }, label)));
@@ -427,6 +415,43 @@ WheelSlice.defaultProps = {
     top: 0,
     tFill: 0
 };
+const drawSector = (context, cx, cy, radius, startAngle, endAngle) => {
+    context.beginPath();
+    context.moveTo(cx, cy);
+    context.arc(cx, cy, radius, startAngle, endAngle);
+    context.lineTo(cx, cy);
+    context.fill();
+};
+class CanvasWheel extends React.Component {
+    constructor() {
+        super(...arguments);
+        this.canvas = React.createRef();
+    }
+    componentDidMount() {
+        const { slices, radius } = this.props;
+        const context = this.canvas.current.getContext('2d');
+        context.font = '15px Segoe UI';
+        for (const slice of slices) {
+            context.fillStyle = slice.backgroundColor.toRGBA();
+            drawSector(context, radius, radius, radius, Math.PI + slice.angularOffset - slice.relativeWeight * Math.PI, Math.PI + slice.angularOffset + slice.relativeWeight * Math.PI);
+            const textColor = slice.backgroundColor.luminance > BG_MAX_LIGHTNESS
+                ? color_1.Color.BLACK
+                : color_1.Color.WHITE;
+            context.fillStyle = textColor.toRGBA();
+            context.save();
+            context.translate(radius, radius);
+            context.rotate(slice.angularOffset);
+            context.translate(-radius, -radius);
+            context.fillText(slice.label, 10, radius + 5);
+            context.restore();
+        }
+    }
+    render() {
+        const { radius } = this.props;
+        return React.createElement("canvas", { ref: this.canvas, width: 2 * radius, height: 2 * radius });
+    }
+}
+exports.CanvasWheel = CanvasWheel;
 exports.WheelColorSchemes = {
     DEFAULT: (i) => color_1.Color.fromHSL(0.3 + ((1.618034 * i) % 1), 0.8, 0.8)
 };
@@ -434,6 +459,7 @@ class Wheel extends React.Component {
     constructor() {
         super(...arguments);
         this.colors = [];
+        this.wheel = React.createRef();
     }
     render() {
         const { entries, colorscheme, angularOffset, tFocus } = this.props;
@@ -447,7 +473,7 @@ class Wheel extends React.Component {
         const pointedIndex = utils_1.cumsum(relativeWeights)
             .map(x => x >= utils_1.lnnr(-angularOffset / (2 * Math.PI) + relativeWeights[0] / 2, 1))
             .indexOf(true);
-        const animatedAngularOffset = utils_1.easeOut(tFocus, {
+        const animatedAngularOffset = utils_1.easeIn(tFocus, {
             duration: 1,
             start: utils_1.lnnr(angularOffset - Math.PI * relativeWeights[0], 2 * Math.PI) +
                 Math.PI * relativeWeights[0],
@@ -459,7 +485,34 @@ class Wheel extends React.Component {
                 ? colorscheme[i]
                 : colorscheme(i);
         }
-        return (React.createElement("div", null, entries.map((entry, i) => (React.createElement(WheelSlice, { label: entry.label, relativeWeight: relativeWeights[i], backgroundColor: this.colors[i], angularOffset: angularOffsets[i] + animatedAngularOffset, radius: 200, key: i, left: 100, top: 100, tFill: i == pointedIndex ? tFocus : 0 })))));
+        return (React.createElement("div", { style: {
+                width: 410,
+                height: 400,
+                position: 'relative',
+                overflow: 'hidden',
+                left: 'calc(50% - 210px)'
+            } },
+            React.createElement("div", { style: {
+                    position: 'absolute',
+                    left: 0,
+                    top: 183,
+                    fontSize: 20,
+                    opacity: 1 - tFocus
+                } }, "\u2014"),
+            React.createElement("div", { ref: this.wheel, style: {
+                    width: 400,
+                    height: 400,
+                    position: 'relative',
+                    left: 10,
+                    transform: `rotate(${animatedAngularOffset}rad)`
+                } },
+                tFocus > 0 && (React.createElement(WheelSlice, { label: entries[pointedIndex].label, relativeWeight: relativeWeights[pointedIndex], backgroundColor: this.colors[pointedIndex], angularOffset: angularOffsets[pointedIndex], radius: 200, tFill: tFocus })),
+                React.createElement(CanvasWheel, { radius: 200, slices: entries.map((entry, i) => ({
+                        label: entry.label,
+                        relativeWeight: relativeWeights[i],
+                        backgroundColor: this.colors[i],
+                        angularOffset: angularOffsets[i]
+                    })) }))));
     }
 }
 exports.Wheel = Wheel;
